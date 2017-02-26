@@ -52,6 +52,7 @@ namespace HelloVirtualSurface
         private ExpressionAnimation moveSurfaceUpDownExpressionAnimation;
 
         private TileDrawingManager visibleRegionManager;
+        private Object sync = new object();
 
         public MainPage()
         {
@@ -215,13 +216,35 @@ namespace HelloVirtualSurface
         #region ITileRenderer
         public void DrawTile(Rect rect, int tileRow, int tileColumn)
         {
-            Color randomColor = Color.FromArgb((byte)255, (byte)randonGen.Next(255), (byte)randonGen.Next(255), (byte)randonGen.Next(255));
-            using (var drawingSession = CanvasComposition.CreateDrawingSession(drawingSurface, rect))
+            Color waterColor = Color.FromArgb(255, 172, 199, 242);
+            Action<CanvasBitmap> drawAction = (CanvasBitmap bitmap) =>
             {
-                drawingSession.Clear(randomColor);
+                lock (sync)
+                {
+                    using (var drawingSession = CanvasComposition.CreateDrawingSession(drawingSurface, rect))
+                    {
+                        drawingSession.Clear(waterColor);
+                        if (bitmap != null)
+                        {
+                            drawingSession.DrawImage(bitmap);
+                        }
+                    }
+                }
+            };
 
-                CanvasTextFormat tf = new CanvasTextFormat() { FontSize = 72 };
-                drawingSession.DrawText($"{tileColumn},{tileRow}", new Vector2(50, 50), Colors.White, tf);
+            if (TileCache.Tiles.ContainsKey(TileCache.GetTileKey(3, tileColumn, tileRow)))
+                drawAction(TileCache.Tiles[TileCache.GetTileKey(3, tileColumn, tileRow)]);
+            else
+            {
+                drawAction(null);
+
+                //TODO handle the error case where the load fails
+                CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), TileCache.GetTileUri(3, tileColumn, tileRow), 96).AsTask().ContinueWith((bm) =>
+                {
+                    //redraw the tile once we have the image downloaded
+                    drawAction(bm.Result);
+                    TileCache.AddImage(3, tileColumn, tileRow, bm.Result);
+                });
             }
         }
 
