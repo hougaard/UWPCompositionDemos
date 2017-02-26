@@ -12,9 +12,6 @@ namespace HelloVirtualSurface
         public static Dictionary<string, CanvasBitmap> Tiles = new Dictionary<string, CanvasBitmap>();
         public static void AddImage(int ZoomLevel, int tilePositionX, int tilePositionY,CanvasBitmap bitmap)
         {
-            if (Tiles == null)
-                Tiles = new Dictionary<string, CanvasBitmap>();
-
             try
             {
                 Tiles.Add(GetTileKey(ZoomLevel, tilePositionX, tilePositionY), bitmap);
