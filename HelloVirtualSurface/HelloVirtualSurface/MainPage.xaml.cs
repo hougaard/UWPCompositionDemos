@@ -46,13 +46,15 @@ namespace HelloVirtualSurface
         private ExpressionAnimation animateMatrix;
 
         //TODO: dedupe with the one in tile manager
-        private const int TILESIZE = 250;
+        private const int TILESIZE = 256;
         Random randonGen = new Random();
         private ExpressionAnimation moveSurfaceExpressionAnimation;
         private ExpressionAnimation moveSurfaceUpDownExpressionAnimation;
 
         private TileDrawingManager visibleRegionManager;
         private Object sync = new object();
+
+        private int ZoomLevel = 4;
 
         public MainPage()
         {
@@ -140,7 +142,7 @@ namespace HelloVirtualSurface
 
             this.tracker.MinPosition = new System.Numerics.Vector3(0, 0, 0);
             //TODO: use same consts as tilemanager object
-            this.tracker.MaxPosition = new System.Numerics.Vector3(TILESIZE * 10000, TILESIZE * 10000, 0);
+            this.tracker.MaxPosition = new System.Numerics.Vector3(TILESIZE * (int)BigInteger.Pow(2,ZoomLevel), TILESIZE * (int)BigInteger.Pow(2,ZoomLevel), 0);
         }
 
         private void startAnimation(CompositionSurfaceBrush brush)
@@ -232,18 +234,18 @@ namespace HelloVirtualSurface
                 }
             };
 
-            if (TileCache.Tiles.ContainsKey(TileCache.GetTileKey(3, tileColumn, tileRow)))
-                drawAction(TileCache.Tiles[TileCache.GetTileKey(3, tileColumn, tileRow)]);
+            if (TileCache.Tiles.ContainsKey(TileCache.GetTileKey(ZoomLevel, tileColumn, tileRow)))
+                drawAction(TileCache.Tiles[TileCache.GetTileKey(ZoomLevel, tileColumn, tileRow)]);
             else
             {
                 drawAction(null);
 
                 //TODO handle the error case where the load fails
-                CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), TileCache.GetTileUri(3, tileColumn, tileRow), 96).AsTask().ContinueWith((bm) =>
+                CanvasBitmap.LoadAsync(CanvasDevice.GetSharedDevice(), TileCache.GetTileUri(ZoomLevel, tileColumn, tileRow), 96).AsTask().ContinueWith((bm) =>
                 {
+                    TileCache.AddImage(ZoomLevel, tileColumn, tileRow, bm.Result);
                     //redraw the tile once we have the image downloaded
                     drawAction(bm.Result);
-                    TileCache.AddImage(3, tileColumn, tileRow, bm.Result);
                 });
             }
         }

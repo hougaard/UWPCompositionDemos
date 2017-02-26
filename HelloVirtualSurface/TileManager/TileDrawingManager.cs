@@ -6,7 +6,7 @@ namespace TileManager
 {
     public class TileDrawingManager
     {
-        private const int TILESIZE = 250;
+        private const int TILESIZE = 256;
         private const int DRAWAHEAD = 0; //Number of tiles to draw ahead //Note: drawahead doesn't currently work
         internal int currentTopLeftTileRow = 0;
         internal int currentTopLeftTileColumn = 0;
