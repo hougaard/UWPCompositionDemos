@@ -50,8 +50,13 @@ namespace HelloVirtualSurface
         Random randonGen = new Random();
         private ExpressionAnimation moveSurfaceExpressionAnimation;
         private ExpressionAnimation moveSurfaceUpDownExpressionAnimation;
+        private ExpressionAnimation scaleSurfaceUpDownExpressionAnimation;
 
         private TileDrawingManager visibleRegionManager;
+        private float lastTrackerScale = 1f;
+        private bool zooming;
+
+
         private Object sync = new object();
 
         private int ZoomLevel = 4;
@@ -67,7 +72,7 @@ namespace HelloVirtualSurface
             ConfigureInput();
             Window.Current.CoreWindow.PointerPressed += CoreWindow_PointerPressed;
             virtualSurfaceHost.SizeChanged += TheSurface_SizeChanged;
-            this.hud.Display = "X:00000.00 Y:00000.00 Left tile:0 Top tile:0";
+            this.hud.Display = "X:00000.00 Y:00000.00 Scale:00000.00 Left tile:0 Top tile:0";
         }
 
         private void TheSurface_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -134,17 +139,24 @@ namespace HelloVirtualSurface
             this.interactionSource = VisualInteractionSource.Create(myDrawingVisual);
             this.interactionSource.PositionXSourceMode = InteractionSourceMode.EnabledWithInertia;
             this.interactionSource.PositionYSourceMode = InteractionSourceMode.EnabledWithInertia;
+            this.interactionSource.ScaleSourceMode = InteractionSourceMode.EnabledWithInertia;
+
             this.tracker = InteractionTracker.CreateWithOwner(this.compositor, this);
             this.tracker.InteractionSources.Add(this.interactionSource);
 
             this.moveSurfaceExpressionAnimation = this.compositor.CreateExpressionAnimation("-tracker.Position.X");
             this.moveSurfaceExpressionAnimation.SetReferenceParameter("tracker", this.tracker);
 
+            this.scaleSurfaceUpDownExpressionAnimation = this.compositor.CreateExpressionAnimation("tracker.Scale");
+            this.scaleSurfaceUpDownExpressionAnimation.SetReferenceParameter("tracker", this.tracker);
+
             this.moveSurfaceUpDownExpressionAnimation = this.compositor.CreateExpressionAnimation("-tracker.Position.Y");
             this.moveSurfaceUpDownExpressionAnimation.SetReferenceParameter("tracker", this.tracker);
 
             this.tracker.MinPosition = new System.Numerics.Vector3(0, 0, 0);
             //TODO: use same consts as tilemanager object
+            this.tracker.MinScale = 0.01f;
+            this.tracker.MaxScale = 100.0f;
         }
 
         private void startAnimation(CompositionSurfaceBrush brush)
@@ -156,7 +168,11 @@ namespace HelloVirtualSurface
             animatingPropset.InsertScalar("ycoord", 1.0f);
             animatingPropset.StartAnimation("ycoord", moveSurfaceUpDownExpressionAnimation);
 
-            animateMatrix = compositor.CreateExpressionAnimation("Matrix3x2(1.0, 0.0, 0.0, 1.0, props.xcoord, props.ycoord)");
+            //animateMatrix = compositor.CreateExpressionAnimation("Matrix3x2(1.0, 0.0, 0.0, 1.0, props.xcoord, props.ycoord)");
+            animatingPropset.InsertScalar("scale", 1.0f);
+            animatingPropset.StartAnimation("scale", scaleSurfaceUpDownExpressionAnimation);
+            
+            animateMatrix = compositor.CreateExpressionAnimation("Matrix3x2(props.scale, 0.0, 0.0, props.scale, props.xcoord, props.ycoord)");
             animateMatrix.SetReferenceParameter("props", animatingPropset);
 
             brush.StartAnimation(nameof(brush.TransformMatrix), animateMatrix);
@@ -187,8 +203,15 @@ namespace HelloVirtualSurface
         {
         }
 
-        public void IdleStateEntered(InteractionTracker sender, InteractionTrackerIdleStateEnteredArgs args)
+        public async void IdleStateEntered(InteractionTracker sender, InteractionTrackerIdleStateEnteredArgs args)
         {
+            if (zooming)
+            {
+                MessageDialog md = new MessageDialog($"Zoom complete.  Final value:{lastTrackerScale}");
+                await md.ShowAsync();
+            }
+
+            zooming = false;
         }
 
         public void InertiaStateEntered(InteractionTracker sender, InteractionTrackerInertiaStateEnteredArgs args)
@@ -207,8 +230,22 @@ namespace HelloVirtualSurface
         {
             try
             {
-                var diags = visibleRegionManager.UpdateVisibleRegion(sender.Position);
-                hud.Display = $"X:{sender.Position.X:00000.00} Y:{sender.Position.Y:00000.00} " + diags;
+                string diags = string.Empty;
+
+                if (lastTrackerScale == args.Scale)
+                {
+                    diags = visibleRegionManager.UpdateVisibleRegion(sender.Position);
+                }
+                else
+                {
+                    // Don't run tilemanager during a zoom
+                    // TODO need custom logic here eg for zoom out
+                    zooming = true;
+                }
+
+                lastTrackerScale = args.Scale;
+
+                hud.Display = $"X:{sender.Position.X:00000.00} Y:{sender.Position.Y:00000.00} Scale:{sender.Scale:00000.00} " + diags;
             }
             catch (Exception ex)
             {
