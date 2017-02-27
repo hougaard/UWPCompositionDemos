@@ -75,6 +75,9 @@ namespace HelloVirtualSurface
             visibleRegionManager.UpdateViewportSize(e.NewSize);
 
             myDrawingVisual.SetSize(virtualSurfaceHost);
+            this.tracker.MaxPosition = new System.Numerics.Vector3(
+                TILESIZE * (int)Math.Pow(2, ZoomLevel) - (int)virtualSurfaceHost.ActualWidth, 
+                TILESIZE * (int)Math.Pow(2, ZoomLevel) - (int)virtualSurfaceHost.ActualHeight, 0);
         }
 
         private void CoreWindow_PointerPressed(Windows.UI.Core.CoreWindow sender, Windows.UI.Core.PointerEventArgs args)
@@ -111,8 +114,8 @@ namespace HelloVirtualSurface
         public void ConfigureSpriteVisual()
         {
             var l = new Windows.Graphics.SizeInt32();
-            l.Height = TILESIZE * 10000;
-            l.Width = TILESIZE * 10000;
+            l.Height = TILESIZE * (int)Math.Pow(2, ZoomLevel);
+            l.Width = TILESIZE * (int)Math.Pow(2, ZoomLevel);
 
             drawingSurface = comositionGraphicsDevice.CreateVirtualDrawingSurface(l, DirectXPixelFormat.B8G8R8A8UIntNormalized, DirectXAlphaMode.Premultiplied);
 
@@ -142,7 +145,6 @@ namespace HelloVirtualSurface
 
             this.tracker.MinPosition = new System.Numerics.Vector3(0, 0, 0);
             //TODO: use same consts as tilemanager object
-            this.tracker.MaxPosition = new System.Numerics.Vector3(TILESIZE * (int)BigInteger.Pow(2,ZoomLevel), TILESIZE * (int)BigInteger.Pow(2,ZoomLevel), 0);
         }
 
         private void startAnimation(CompositionSurfaceBrush brush)
